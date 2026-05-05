@@ -7,12 +7,13 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Routes
 const authRoutes = require('./routes/auth');
 const projectRoutes = require('./routes/projects');
+const taskRoutes = require('./routes/tasks');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/tasks', taskRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'TaskFlow API is running!' });
