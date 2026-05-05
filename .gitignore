@@ -1,0 +1,16 @@
+# Environment variables — NEVER commit this
+.env
+
+# Node dependencies
+node_modules/
+
+# Docker volumes
+mongo-data/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
