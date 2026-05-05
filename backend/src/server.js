@@ -9,9 +9,11 @@ app.use(express.json());
 
 // Routes
 const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
+const projectRoutes = require('./routes/projects');
 
-// Test route
+app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+
 app.get('/', (req, res) => {
   res.json({ message: 'TaskFlow API is running!' });
 });
