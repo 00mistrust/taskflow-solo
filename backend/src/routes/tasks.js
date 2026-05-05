@@ -15,7 +15,10 @@ router.get('/project/:id', auth, async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
     const total = await Task.countDocuments(filter);
-    const tasks = await Task.find(filter).skip(skip).limit(limitNum);
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'name email')
+      .skip(skip)
+      .limit(limitNum);
     res.json({ data: tasks, total, page: pageNum, totalPages: Math.ceil(total / limitNum) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -33,8 +36,24 @@ router.get('/', auth, async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
     const total = await Task.countDocuments(filter);
-    const tasks = await Task.find(filter).skip(skip).limit(limitNum);
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'name email')
+      .skip(skip)
+      .limit(limitNum);
     res.json({ data: tasks, total, page: pageNum, totalPages: Math.ceil(total / limitNum) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET tasks assigned to the logged-in user
+router.get('/my-tasks', auth, async (req, res) => {
+  try {
+    const tasks = await Task.find({ assignedTo: req.user.userId })
+      .populate('assignedTo', 'name email')
+      .populate('project', 'title')
+      .sort({ priority: -1 });
+    res.json(tasks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
