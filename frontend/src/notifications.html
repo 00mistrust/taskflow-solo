@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Notifications</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    .navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .bell { position: relative; cursor: pointer; font-size: 1.5em; }
+    #notifBadge { position: absolute; top: -5px; right: -8px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.5em; display: none; }
+    .notif-list { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .notif-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .notif-item button { padding: 4px 10px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+    .archived { color: #999; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <h2>TaskFlow</h2>
+    <div class="bell" onclick="window.location.href='notifications.html'">
+      🔔 <span id="notifBadge">0</span>
+    </div>
+  </div>
+  <div class="notif-list">
+    <h3>Notifications</h3>
+    <div id="notifList"></div>
+    <h3>Archivées</h3>
+    <div id="archivedList"></div>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+    let notifications = [];
+    async function fetchNotifications() {
+      try {
+        const res = await fetch('http://localhost:5000/api/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        notifications = data.filter(n => !n.read);
+        const readOnes = data.filter(n => n.read);
+        localStorage.setItem('archivedNotifications', JSON.stringify(readOnes));
+        updateBadge();
+        renderNotifications();
+        renderArchived();
+      } catch (err) { console.error('Error:', err); }
+    }
+    function updateBadge() {
+      const badge = document.getElementById('notifBadge');
+      badge.textContent = notifications.length;
+      badge.style.display = notifications.length > 0 ? 'inline' : 'none';
+    }
+    function renderNotifications() {
+      const div = document.getElementById('notifList');
+      div.innerHTML = '';
+      if (notifications.length === 0) { div.innerHTML = '<p>Aucune nouvelle notification.</p>'; return; }
+      notifications.forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'notif-item';
+        item.innerHTML = `<span>${n.message}</span><button onclick="markAsRead('${n._id}')">Lu</button>`;
+        div.appendChild(item);
+      });
+    }
+    function renderArchived() {
+      const div = document.getElementById('archivedList');
+      const archived = JSON.parse(localStorage.getItem('archivedNotifications') || '[]');
+      div.innerHTML = '';
+      if (archived.length === 0) { div.innerHTML = '<p class="archived">Aucune notification archivée.</p>'; return; }
+      archived.forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'notif-item archived';
+        item.innerHTML = `<span>${n.message}</span>`;
+        div.appendChild(item);
+      });
+    }
+    async function markAsRead(id) {
+      try {
+        await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await fetchNotifications();
+      } catch (err) { console.error('Error:', err); }
+    }
+    fetchNotifications();
+    setInterval(fetchNotifications, 30000);
+  </script>
+</body>
+</html>

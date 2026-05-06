@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Nouvelle Tâche</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    h1 { color: #333; }
+    form { background: white; padding: 20px; border-radius: 8px; max-width: 500px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .draft-banner { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: none; }
+    .draft-banner button { background: #ffc107; color: #333; margin-left: 10px; padding: 5px 10px; }
+  </style>
+</head>
+<body>
+  <h1>Nouvelle Tâche</h1>
+  <div class="draft-banner" id="draftBanner">
+    📝 Un brouillon a été trouvé. Voulez-vous le restaurer ?
+    <button onclick="restoreDraft()">Restaurer</button>
+    <button onclick="discardDraft()">Ignorer</button>
+  </div>
+  <form id="taskForm">
+    <label>Titre</label>
+    <input type="text" id="title" placeholder="Titre de la tâche" required>
+    <label>Description</label>
+    <textarea id="description" rows="3" placeholder="Description..."></textarea>
+    <label>Priorité</label>
+    <select id="priority" required>
+      <option value="">-- Choisir --</option>
+      <option value="basse">Basse</option>
+      <option value="moyenne">Moyenne</option>
+      <option value="haute">Haute</option>
+    </select>
+    <label>Statut</label>
+    <select id="status" required>
+      <option value="">-- Choisir --</option>
+      <option value="à faire">À faire</option>
+      <option value="en cours">En cours</option>
+      <option value="terminé">Terminé</option>
+    </select>
+    <button type="submit">Créer la tâche</button>
+  </form>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+    const PROJECT_ID = new URLSearchParams(window.location.search).get('project');
+    const DRAFT_KEY = `draft_task_${PROJECT_ID}`;
+    document.getElementById('taskForm').addEventListener('input', function() {
+      const draft = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        priority: document.getElementById('priority').value,
+        status: document.getElementById('status').value
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    });
+    window.addEventListener('load', function() {
+      const draft = localStorage.getItem(DRAFT_KEY);
+      if (draft) document.getElementById('draftBanner').style.display = 'block';
+    });
+    function restoreDraft() {
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY));
+      if (!draft) return;
+      document.getElementById('title').value = draft.title || '';
+      document.getElementById('description').value = draft.description || '';
+      document.getElementById('priority').value = draft.priority || '';
+      document.getElementById('status').value = draft.status || '';
+      document.getElementById('draftBanner').style.display = 'none';
+    }
+    function discardDraft() {
+      localStorage.removeItem(DRAFT_KEY);
+      document.getElementById('draftBanner').style.display = 'none';
+    }
+    document.getElementById('taskForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch('http://localhost:5000/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            priority: document.getElementById('priority').value,
+            status: document.getElementById('status').value,
+            project: PROJECT_ID
+          })
+        });
+        if (!res.ok) { const err = await res.json(); alert('Erreur: ' + err.error); return; }
+        localStorage.removeItem(DRAFT_KEY);
+        alert('Tâche créée avec succès!');
+        window.location.href = `tasks.html?project=${PROJECT_ID}`;
+      } catch (err) { console.error('Erreur:', err); }
+    });
+  </script>
+</body>
+</html>

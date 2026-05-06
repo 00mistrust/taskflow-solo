@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Tâches</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    h1 { color: #333; }
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filters input, .filters select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .filters button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; background: #4a90e2; color: white; }
+    .filters button.reset { background: #999; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #4a90e2; color: white; }
+    .pagination { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+    .pagination button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; background: #4a90e2; color: white; }
+  </style>
+</head>
+<body>
+  <h1>Tâches du projet</h1>
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="Rechercher par mot-clé...">
+    <select id="filterStatus">
+      <option value="">-- Tous les statuts --</option>
+      <option value="à faire">À faire</option>
+      <option value="en cours">En cours</option>
+      <option value="terminé">Terminé</option>
+    </select>
+    <select id="filterPriority">
+      <option value="">-- Toutes les priorités --</option>
+      <option value="basse">Basse</option>
+      <option value="moyenne">Moyenne</option>
+      <option value="haute">Haute</option>
+    </select>
+    <button onclick="applyFilters()">Filtrer</button>
+    <button class="reset" onclick="resetFilters()">Réinitialiser</button>
+  </div>
+  <table>
+    <thead><tr><th>Titre</th><th>Priorité</th><th>Statut</th><th>Assigné à</th></tr></thead>
+    <tbody id="taskTable"></tbody>
+  </table>
+  <div class="pagination" id="pagination"></div>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+    const PROJECT_ID = new URLSearchParams(window.location.search).get('project');
+    let currentPage = 1;
+    async function loadTasks(page = 1) {
+      try {
+        const search = document.getElementById('searchInput').value;
+        const status = document.getElementById('filterStatus').value;
+        const priority = document.getElementById('filterPriority').value;
+        const params = new URLSearchParams();
+        params.append('page', page);
+        params.append('limit', 5);
+        if (search) params.append('search', search);
+        if (status) params.append('status', status);
+        if (priority) params.append('priority', priority);
+        const url = PROJECT_ID
+          ? `http://localhost:5000/api/tasks/project/${PROJECT_ID}?${params}`
+          : `http://localhost:5000/api/tasks?${params}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const result = await res.json();
+        renderTasks(result.data);
+        renderPagination(result.page, result.totalPages);
+        currentPage = result.page;
+      } catch (err) { console.error('Erreur:', err); }
+    }
+    function renderTasks(tasks) {
+      const tbody = document.getElementById('taskTable');
+      tbody.innerHTML = '';
+      if (!tasks || tasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Aucune tâche trouvée.</td></tr>';
+        return;
+      }
+      tasks.forEach(task => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${task.title}</td><td>${task.priority}</td><td>${task.status}</td><td>${task.assignedTo ? task.assignedTo.name : '—'}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderPagination(page, totalPages) {
+      const div = document.getElementById('pagination');
+      div.innerHTML = '';
+      if (totalPages <= 1) return;
+      if (page > 1) {
+        const prev = document.createElement('button');
+        prev.textContent = '← Précédent';
+        prev.onclick = () => loadTasks(page - 1);
+        div.appendChild(prev);
+      }
+      const info = document.createElement('span');
+      info.textContent = `Page ${page} / ${totalPages}`;
+      div.appendChild(info);
+      if (page < totalPages) {
+        const next = document.createElement('button');
+        next.textContent = 'Suivant →';
+        next.onclick = () => loadTasks(page + 1);
+        div.appendChild(next);
+      }
+    }
+    function applyFilters() { loadTasks(1); }
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterPriority').value = '';
+      loadTasks(1);
+    }
+    loadTasks();
+  </script>
+</body>
+</html>
